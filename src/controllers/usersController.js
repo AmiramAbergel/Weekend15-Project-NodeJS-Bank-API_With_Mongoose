@@ -1,12 +1,12 @@
 import { usersDataJSON, writeData } from '../utils/readWriteData.js';
 import { v4 as uuidv4 } from 'uuid';
-import userObj from '../model/user.js';
 import {
     cashOrCreditExpense,
     findUser,
     fundsAvailability,
     sumCashCredit,
 } from '../utils/bankManagerUtils.js';
+import { User } from '../model/users.model.js';
 
 export const checkID = (req, res, next, val) => {
     console.log(`User id is: ${val}`);
@@ -37,18 +37,26 @@ export const checkIfExists = (id, bankACC) => {
     return checkUser ? true : false;
 };
 
-export const getAllUsers = (req, res) => {
-    res.status(200).json({
-        status: 'success',
-        requestedAt: req.requestTime,
-        results: usersDataJSON.length,
-        data: {
-            usersDataJSON,
-        },
-    });
+export const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find();
+        res.status(200).json({
+            status: 'success',
+            requestedAt: req.requestTime,
+            results: users.length,
+            data: {
+                users,
+            },
+        });
+    } catch (err) {
+        res.status(404).json({
+            status: 'fail',
+            message: err,
+        });
+    }
 };
 
-export const getUserByID = (req, res) => {
+export const getUserByID = async (req, res) => {
     const userID = req.params.id;
     const userByID = findUser(userID);
     res.status(200).json({
@@ -59,7 +67,7 @@ export const getUserByID = (req, res) => {
     });
 };
 
-export const addNewUser = (req, res) => {
+export const addNewUser = async (req, res) => {
     const newUserData = req.body;
     const newUserID = (
         +usersDataJSON[usersDataJSON.length - 1].id + 1
@@ -87,7 +95,7 @@ export const addNewUser = (req, res) => {
     });
 };
 
-export const updateUserCash = (req, res) => {
+export const updateUserCash = async (req, res) => {
     const userID = req.params.id;
     const depositAmount = req.body.cash;
     if (!userID || !depositAmount) {
@@ -105,7 +113,7 @@ export const updateUserCash = (req, res) => {
     });
 };
 
-export const updateUserCredit = (req, res) => {
+export const updateUserCredit = async (req, res) => {
     const userID = req.params.id;
     const creditAmount = req.body.credit;
     if (!userID || !creditAmount) {
@@ -129,7 +137,7 @@ export const updateUserCredit = (req, res) => {
     });
 };
 
-export const withdrawFromUser = (req, res) => {
+export const withdrawFromUser = async (req, res) => {
     const userID = req.params.id;
     const withdrawAmount = req.body.withdraw;
     if (!userID || !withdrawAmount) {
