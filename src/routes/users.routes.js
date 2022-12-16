@@ -11,6 +11,7 @@ import {
     updateUserCredit,
     withdrawFromUser,
 } from '../controllers/usersController.js';
+import { checkCreditInBody } from '../middlewares/creditValidation.middleware.js';
 export const usersRouter = Router();
 usersRouter.route(`/transfer`).patch(transferMoney);
 usersRouter.param('id', checkID);
@@ -21,6 +22,6 @@ usersRouter
     .get(getUserByID)
     .patch(updateUserCash)
     .delete(deleteUser); // read specific user | update user | delete user
-usersRouter.route(`/credit/:id`).patch(updateUserCredit);
+usersRouter.route(`/credit/:id`).patch(checkCreditInBody, updateUserCredit);
 usersRouter.route(`/cash/:id`).patch(updateUserCash);
 usersRouter.route(`/withdraw/:id`).patch(withdrawFromUser);

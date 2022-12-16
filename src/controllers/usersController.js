@@ -1,4 +1,3 @@
-import { usersDataJSON, writeData } from '../utils/readWriteData.js';
 import { v4 as uuidv4 } from 'uuid';
 import {
     cashOrCreditExpense,
@@ -57,77 +56,91 @@ export const getAllUsers = async (req, res) => {
 };
 
 export const getUserByID = async (req, res) => {
-    const userID = req.params.id;
-    const userByID = findUser(userID);
-    res.status(200).json({
-        status: 'success',
-        data: {
-            userByID,
-        },
-    });
+    try {
+        const userID = req.params.id;
+        const user = await User.findById(userID);
+        res.status(200).json({
+            status: 'success',
+            data: {
+                user,
+            },
+        });
+    } catch (err) {
+        res.status(404).json({
+            status: 'fail',
+            message: err,
+        });
+    }
 };
 
 export const addNewUser = async (req, res) => {
-    const newUserData = req.body;
-    const newUserID = (
-        +usersDataJSON[usersDataJSON.length - 1].id + 1
-    ).toString(); //In the local database, get the ID of the last user, increase it by 1, and make it into a string
-    const newUserBankAcc = uuidv4();
-    console.log(+usersDataJSON[usersDataJSON.length - 1].id + 1);
-    if (checkIfExists(newUserID, newUserBankAcc)) {
-        return res.status(400).json({
-            status: 'fail',
-            message: 'Cannot add duplicate users',
+    try {
+        const { name, bankAccNum, isActive, credit, cash } = req.body;
+        const newUser = await User.create({
+            name: name,
+            bankAccNum: bankAccNum,
+            isActive: isActive,
+            credit: credit,
+            cash: cash,
         });
-    } else {
-        const updatedNewUser = Object.assign(
-            { id: newUserID, bank_acc_num: newUserBankAcc, credit: 0, cash: 0 },
-            newUserData
-        );
-        console.log(updatedNewUser);
-        usersDataJSON.push(updatedNewUser);
-        writeData(usersDataJSON);
+        res.status(201).json({
+            status: 'success',
+            message: `New user added: ${newUser}`,
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(400).json({
+            status: 'fail',
+            message: err,
+        });
     }
+};
 
-    res.status(200).json({
-        status: 'success',
-        message: 'New user added',
+const filterObj = (obj, ...allowedFields) => {
+    const newObj = {};
+    Object.keys(obj).forEach((el) => {
+        if (allowedFields.includes(el)) {
+            newObj[el] = obj[el];
+        }
     });
+    return newObj;
 };
 
 export const updateUserCash = async (req, res) => {
     const userID = req.params.id;
     const depositAmount = req.body.cash;
-    if (!userID || !depositAmount) {
-        return res.status(400).json({
+    // Filtered out unwanted fields names that are not allowed to be updated
+    const filteredBody = filterObj(req.body, [depositAmount]);
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            userID,
+            {
+                $inc: filteredBody,
+            },
+            {
+                new: true,
+                runValidators: true,
+                context: 'query',
+            }
+        );
+        res.status(200).json({
+            status: 'success',
+            message: 'user cash updated',
+            data: {
+                user: updatedUser,
+            },
+        });
+    } catch (err) {
+        res.status(404).json({
             status: 'fail',
-            message: 'id or cash data missing...',
+            message: err,
         });
     }
-    const userByID = findUser(userID);
-    userByID.cash += depositAmount;
-    writeData(usersDataJSON);
-    res.status(200).json({
-        status: 'success',
-        message: 'user cash updated',
-    });
 };
 
 export const updateUserCredit = async (req, res) => {
     const userID = req.params.id;
     const creditAmount = req.body.credit;
-    if (!userID || !creditAmount) {
-        return res.status(400).json({
-            status: 'fail',
-            message: 'id or cash data missing...',
-        });
-    }
-    if (creditAmount < 1) {
-        return res.status(400).json({
-            status: 'fail',
-            message: 'Only positive numbers can be used for credit',
-        });
-    }
     const userByID = findUser(userID);
     userByID.credit = creditAmount;
     writeData(usersDataJSON);
@@ -204,8 +217,18 @@ export const getUserCash = (req, res) => {
     });
 };
 
-export const deleteUser = (req, res) => {
-    res.status(200).json({
-        status: 'success',
-    });
+export const deleteUser = async (req, res) => {
+    const userID = req.params.id;
+    try {
+        await User.findByIdAndRemove(userID);
+        res.status(200).json({
+            status: 'success',
+            message: '1 user deleted!',
+        });
+    } catch (err) {
+        res.status(404).json({
+            status: 'fail',
+            message: err,
+        });
+    }
 };
