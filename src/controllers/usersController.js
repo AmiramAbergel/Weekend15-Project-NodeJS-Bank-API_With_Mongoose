@@ -1,40 +1,38 @@
-import { v4 as uuidv4 } from 'uuid';
 import {
     cashOrCreditExpense,
-    findUser,
     fundsAvailability,
     sumCashCredit,
 } from '../utils/bankManagerUtils.js';
 import { User } from '../model/users.model.js';
 
-export const checkID = (req, res, next, val) => {
-    console.log(`User id is: ${val}`);
+// export const checkID = (req, res, next, val) => {
+//     console.log(`User id is: ${val}`);
 
-    if (+req.params.id > usersDataJSON.length) {
-        return res.status(404).json({
-            status: 'fail',
-            message: 'Invalid ID',
-        });
-    }
-    next();
-};
+//     if (+req.params.id > usersDataJSON.length) {
+//         return res.status(404).json({
+//             status: 'fail',
+//             message: 'Invalid ID',
+//         });
+//     }
+//     next();
+// };
 
-export const checkBody = (req, res, next) => {
-    if (!req.body.fist || !req.body.last || !req.body.isActive) {
-        return res.status(400).json({
-            status: 'fail',
-            message: 'Missing fist name or last name or active status',
-        });
-    }
-    next();
-};
+// export const checkBody = (req, res, next) => {
+//     if (!req.body.fist || !req.body.last || !req.body.isActive) {
+//         return res.status(400).json({
+//             status: 'fail',
+//             message: 'Missing fist name or last name or active status',
+//         });
+//     }
+//     next();
+// };
 
-export const checkIfExists = (id, bankACC) => {
-    const checkUser = usersDataJSON.find((userDB) => {
-        return userDB.id === id || userDB.bank_acc_num === bankACC;
-    });
-    return checkUser ? true : false;
-};
+// export const checkIfExists = (id, bankACC) => {
+//     const checkUser = usersDataJSON.find((userDB) => {
+//         return userDB.id === id || userDB.bank_acc_num === bankACC;
+//     });
+//     return checkUser ? true : false;
+// };
 
 export const getAllUsers = async (req, res) => {
     try {
@@ -141,47 +139,107 @@ export const updateUserCash = async (req, res) => {
 export const updateUserCredit = async (req, res) => {
     const userID = req.params.id;
     const creditAmount = req.body.credit;
-    const userByID = findUser(userID);
-    userByID.credit = creditAmount;
-    writeData(usersDataJSON);
-    res.status(200).json({
-        status: 'success',
-        message: 'user credit updated',
-    });
+    // Filtered out unwanted fields names that are not allowed to be updated
+    const filteredBody = filterObj(req.body, [creditAmount]);
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            userID,
+            {
+                $set: filteredBody,
+            },
+            {
+                new: true,
+                runValidators: true,
+                context: 'query',
+            }
+        );
+        res.status(200).json({
+            status: 'success',
+            message: 'user credit updated',
+            data: {
+                user: updatedUser,
+            },
+        });
+    } catch (err) {
+        res.status(404).json({
+            status: 'fail',
+            message: err,
+        });
+    }
 };
 
 export const withdrawFromUser = async (req, res) => {
     const userID = req.params.id;
     const withdrawAmount = req.body.withdraw;
-    if (!userID || !withdrawAmount) {
-        return res.status(400).json({
+    try {
+        const user = await User.findById(userID);
+        const userCashCredit = sumCashCredit(user.credit, user.cash);
+        if (!fundsAvailability(userCashCredit, withdrawAmount)) {
+            return res.status(400).json({
+                status: 'fail',
+                message:
+                    'Only positive numbers can be used for withdraw and not more than user total funding ',
+            });
+        }
+        if (user.cash <= withdrawAmount) {
+            const updatedUser = await User.findByIdAndUpdate(
+                userID,
+                {
+                    $set: {
+                        credit: user.credit - (withdrawAmount - user.cash),
+                        cash: 0,
+                    },
+                },
+                {
+                    new: true,
+                    runValidators: true,
+                    context: 'query',
+                }
+            );
+            res.status(200).json({
+                status: 'success',
+                message: 'user credit and cash updated after withdraw',
+                data: {
+                    user: updatedUser,
+                },
+            });
+        } else {
+            const updatedUser = await User.findByIdAndUpdate(
+                userID,
+                {
+                    $set: {
+                        cash: user.cash - withdrawAmount,
+                    },
+                },
+                {
+                    new: true,
+                    runValidators: true,
+                    context: 'query',
+                }
+            );
+            res.status(200).json({
+                status: 'success',
+                message: 'user credit and cash updated after withdraw',
+                data: {
+                    user: updatedUser,
+                },
+            });
+        }
+    } catch (err) {
+        res.status(404).json({
             status: 'fail',
-            message: 'id or cash data missing...',
+            message: err,
         });
     }
-    const userByID = findUser(userID);
-    const userCashCredit = sumCashCredit(userByID.credit, userByID.cash);
-    if (!fundsAvailability(userCashCredit, withdrawAmount)) {
-        return res.status(400).json({
-            status: 'fail',
-            message:
-                'Only positive numbers can be used for withdraw and not more than user total funding ',
-        });
-    }
-    cashOrCreditExpense(userByID, withdrawAmount);
-    writeData(usersDataJSON);
-    res.status(200).json({
-        status: 'success',
-        message: 'user credit and cash updated after withdraw',
-    });
 };
 
-export const transferMoney = (req, res) => {
+export const transferMoney = async (req, res) => {
     const senderUserID = req.query.sender_id;
     const receiverUserID = req.query.receiver_id;
     const transferAmount = req.body.amount;
-    const findSenderUserByID = findUser(senderUserID);
-    const findReceiverUserByID = findUser(receiverUserID);
+
+    const findSenderUserByID = await User.findById(senderUserID);
+    const findReceiverUserByID = await User.findById(receiverUserID);
     const senderUserCashCredit = sumCashCredit(
         findSenderUserByID.credit,
         findSenderUserByID.cash
@@ -194,26 +252,76 @@ export const transferMoney = (req, res) => {
         });
     }
     cashOrCreditExpense(findSenderUserByID, transferAmount);
-    findReceiverUserByID.cash += transferAmount;
-    writeData(usersDataJSON);
+    if (findSenderUserByID.cash <= transferAmount) {
+        const updatedUser = await User.findByIdAndUpdate(
+            senderUserID,
+            {
+                $inc: {
+                    credit:
+                        findSenderUserByID.credit -
+                        (transferAmount - findSenderUserByID.cash),
+                    cash: 0,
+                },
+            },
+            {
+                new: true,
+                runValidators: true,
+                context: 'query',
+            }
+        );
+        res.status(200).json({
+            status: 'success',
+            message: 'user credit updated',
+            data: {
+                user: updatedUser,
+            },
+        });
+    } else {
+        const updatedUser = await User.findByIdAndUpdate(
+            senderUserID,
+            {
+                $inc: {
+                    cash: findSenderUserByID.cash - transferAmount,
+                },
+            },
+            {
+                new: true,
+                runValidators: true,
+                context: 'query',
+            }
+        );
+        res.status(200).json({
+            status: 'success',
+            message: 'user credit updated',
+            data: {
+                user: updatedUser,
+            },
+        });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        receiverUserID,
+        {
+            $inc: {
+                cash: transferAmount,
+            },
+        },
+        {
+            new: true,
+            runValidators: true,
+            context: 'query',
+        }
+    );
+    res.status(200).json({
+        status: 'success',
+        message: 'user credit updated',
+        data: {
+            user: updatedUser,
+        },
+    });
     res.status(200).json({
         status: 'success',
         message: 'Transfer completed',
-    });
-};
-
-/////
-///
-///
-///
-export const getUserCredit = (req, res) => {
-    res.status(200).json({
-        status: 'success',
-    });
-};
-export const getUserCash = (req, res) => {
-    res.status(200).json({
-        status: 'success',
     });
 };
 

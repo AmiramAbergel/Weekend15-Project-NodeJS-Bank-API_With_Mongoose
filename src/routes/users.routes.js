@@ -2,7 +2,6 @@ import { Router } from 'express';
 
 import {
     addNewUser,
-    checkID,
     deleteUser,
     getAllUsers,
     getUserByID,
@@ -11,10 +10,11 @@ import {
     updateUserCredit,
     withdrawFromUser,
 } from '../controllers/usersController.js';
-import { checkCreditInBody } from '../middlewares/creditValidation.middleware.js';
+import { checkCashInBody } from '../middlewares/cashValidation.middleware.js';
+import { checkWithdrawAmountInBody } from '../middlewares/withdrawAmountVaslidation.middleware.js';
 export const usersRouter = Router();
 usersRouter.route(`/transfer`).patch(transferMoney);
-usersRouter.param('id', checkID);
+//usersRouter.param('id', checkID);
 // all routes in here are starting with localhost:8000/api/v1/users
 usersRouter.route(`/`).get(getAllUsers).post(addNewUser); //get all users and add new user
 usersRouter
@@ -22,6 +22,8 @@ usersRouter
     .get(getUserByID)
     .patch(updateUserCash)
     .delete(deleteUser); // read specific user | update user | delete user
-usersRouter.route(`/credit/:id`).patch(checkCreditInBody, updateUserCredit);
-usersRouter.route(`/cash/:id`).patch(updateUserCash);
-usersRouter.route(`/withdraw/:id`).patch(withdrawFromUser);
+usersRouter.route(`/credit/:id`).patch(updateUserCredit);
+usersRouter.route(`/cash/:id`).patch(checkCashInBody, updateUserCash);
+usersRouter
+    .route(`/withdraw/:id`)
+    .patch(checkWithdrawAmountInBody, withdrawFromUser);

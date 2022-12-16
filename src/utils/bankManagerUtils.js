@@ -1,10 +1,3 @@
-import { usersDataJSON, writeData } from '../utils/readWriteData.js';
-
-export const findUser = (id) => {
-    const resultUserByID = usersDataJSON.find((userDB) => userDB.id === id);
-    return resultUserByID;
-};
-
 export const fundsAvailability = (userCashCredit, amount) => {
     if (amount < 1 || userCashCredit < amount) {
         return false;
