@@ -244,6 +244,7 @@ export const transferMoney = async (req, res) => {
         findSenderUserByID.credit,
         findSenderUserByID.cash
     );
+
     if (!fundsAvailability(senderUserCashCredit, transferAmount)) {
         return res.status(400).json({
             status: 'fail',
@@ -251,12 +252,11 @@ export const transferMoney = async (req, res) => {
                 'Only positive numbers can be used for withdraw and not more than user total funding',
         });
     }
-    cashOrCreditExpense(findSenderUserByID, transferAmount);
     if (findSenderUserByID.cash <= transferAmount) {
         const updatedUser = await User.findByIdAndUpdate(
             senderUserID,
             {
-                $inc: {
+                $set: {
                     credit:
                         findSenderUserByID.credit -
                         (transferAmount - findSenderUserByID.cash),
@@ -269,18 +269,11 @@ export const transferMoney = async (req, res) => {
                 context: 'query',
             }
         );
-        res.status(200).json({
-            status: 'success',
-            message: 'user credit updated',
-            data: {
-                user: updatedUser,
-            },
-        });
     } else {
         const updatedUser = await User.findByIdAndUpdate(
             senderUserID,
             {
-                $inc: {
+                $set: {
                     cash: findSenderUserByID.cash - transferAmount,
                 },
             },
@@ -290,13 +283,6 @@ export const transferMoney = async (req, res) => {
                 context: 'query',
             }
         );
-        res.status(200).json({
-            status: 'success',
-            message: 'user credit updated',
-            data: {
-                user: updatedUser,
-            },
-        });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -312,13 +298,6 @@ export const transferMoney = async (req, res) => {
             context: 'query',
         }
     );
-    res.status(200).json({
-        status: 'success',
-        message: 'user credit updated',
-        data: {
-            user: updatedUser,
-        },
-    });
     res.status(200).json({
         status: 'success',
         message: 'Transfer completed',
