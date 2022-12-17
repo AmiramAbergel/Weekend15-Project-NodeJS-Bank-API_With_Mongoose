@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = '/api/v1';
 
 app.use(json());
-app.use(BASE_URL, indexRoute); // localhost:4000/api/v1
+app.use(BASE_URL, indexRoute); // render:https://weekend15-project-nodejs-bank-api-with.onrender.com/api/v1/  local: localhost:4000/api/v1
 
 //run the function so we are connected to the database
 connectToDB();
