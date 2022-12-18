@@ -10,8 +10,8 @@ import {
     updateUserCredit,
     withdrawFromUser,
 } from '../controllers/usersController.js';
-import { checkCashInBody } from '../middlewares/cashValidation.middleware.js';
-import { checkWithdrawAmountInBody } from '../middlewares/withdrawAmountVaslidation.middleware.js';
+import { checkCashInBody } from '../middleware/cashValidation.middleware.js';
+import { checkWithdrawAmountInBody } from '../middleware/withdrawAmountValidation.middleware.js';
 export const usersRouter = Router();
 usersRouter.route(`/transfer`).patch(transferMoney);
 //usersRouter.param('id', checkID);

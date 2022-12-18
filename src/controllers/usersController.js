@@ -1,8 +1,4 @@
-import {
-    cashOrCreditExpense,
-    fundsAvailability,
-    sumCashCredit,
-} from '../utils/bankManagerUtils.js';
+import { fundsAvailability, sumCashCredit } from '../utils/bankManagerUtils.js';
 import { User } from '../model/users.model.js';
 
 // export const checkID = (req, res, next, val) => {

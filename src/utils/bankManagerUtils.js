@@ -9,12 +9,3 @@ export const fundsAvailability = (userCashCredit, amount) => {
 export const sumCashCredit = (cash, credit) => {
     return cash + credit;
 };
-
-export const cashOrCreditExpense = (user, amount) => {
-    if (user.cash <= amount) {
-        user.credit = user.credit - (amount - user.cash);
-        user.cash = 0;
-    } else {
-        user.cash = user.cash - amount;
-    }
-};
