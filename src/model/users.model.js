@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import validator from 'validator';
 import { v4 as uuidv4 } from 'uuid';
 const { Schema } = mongoose;
 const userSchema = new Schema({
